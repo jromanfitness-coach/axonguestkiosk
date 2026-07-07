@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#05090d" />
+  <title>Axon Performance | Digital Contracts</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-orb bg-orb-a" aria-hidden="true"></div>
+  <div class="bg-orb bg-orb-b" aria-hidden="true"></div>
+  <div class="grid-glow" aria-hidden="true"></div>
+
+  <main class="app-shell" id="appTop">
+    <header class="topbar">
+      <a class="brand-lockup" href="#appTop" aria-label="Axon Performance home">
+        <img src="assets/axon-performance-white.png" alt="Axon Performance" />
+      </a>
+      <div class="topbar-actions">
+        <span class="kiosk-status"><i></i> IPAD KIOSK</span>
+        <button class="admin-open" id="openAdmin" type="button" aria-haspopup="dialog">ADMIN EDIT</button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">DIGITAL CONTRACT PORTAL</p>
+        <h1>WAIVER &amp; CHECK-IN</h1>
+        <p>Choose an agreement, complete each legal acknowledgement, and export a presentation-quality signed contract automatically.</p>
+      </div>
+      <aside class="hero-assist" aria-label="Kiosk instructions">
+        <img src="assets/axon-insignia-blue.png" alt="" />
+        <div><strong>Fast. Clear. Structured.</strong><span>Large iPad tiles, black-ink signing, and contract-grade exports.</span></div>
+      </aside>
+    </section>
+
+    <section class="waiver-carousel-region" aria-labelledby="waiverStartHeading">
+      <div class="section-row">
+        <div><p class="eyebrow">SELECT A CONTRACT</p><h2 id="waiverStartHeading">Start your visit</h2></div>
+        <div class="carousel-actions" aria-label="Contract carousel controls"><span id="tileCounter">1 / 4</span><button id="tilePrev" type="button" aria-label="Previous contract">←</button><button id="tileNext" type="button" aria-label="Next contract">→</button></div>
+      </div>
+      <div class="waiver-carousel" id="serviceTiles" role="list" aria-label="Available waiver types"></div>
+      <p class="carousel-hint">Swipe across to browse. Tap a tile to open the agreement.</p>
+    </section>
+
+    <section class="kiosk-steps" aria-label="Kiosk completion steps">
+      <article><b>01</b><div><strong>Select</strong><span>Choose the agreement that matches the visit.</span></div></article>
+      <article><b>02</b><div><strong>Initial</strong><span>Draw initials once, then apply them to each waiver section.</span></div></article>
+      <article><b>03</b><div><strong>Sign</strong><span>Sign in black ink and receive an automatic PDF contract export.</span></div></article>
+    </section>
+
+    <footer class="app-footer">AXON PERFORMANCE · DIGITAL CONTRACT KIOSK · SEE STAFF WITH QUESTIONS</footer>
+  </main>
+
+  <dialog id="contractDialog" class="contract-dialog" aria-labelledby="contractModalTitle">
+    <form id="waiverForm" class="contract-modal" novalidate>
+      <header class="contract-modal-topbar">
+        <img src="assets/axon-performance-white.png" alt="Axon Performance" />
+        <div><p class="eyebrow">DIGITAL CONTRACT</p><h2 id="contractModalTitle">WAIVER &amp; LIABILITY</h2><span id="contractModalSub">New member agreement</span></div>
+        <button id="closeContract" type="button" class="icon-close" aria-label="Close contract">×</button>
+      </header>
+
+      <section class="contract-paper">
+        <div class="paper-ribbon" aria-hidden="true"></div>
+        <header class="paper-header">
+          <div class="paper-brand"><img src="assets/axon-performance-blue.png" alt="Axon Performance" /></div>
+          <div class="paper-meta"><span>CONTRACT CATEGORY</span><b id="contractBadge">NEW MEMBER</b><small id="contractDateStamp"></small></div>
+        </header>
+        <div class="paper-title-block"><p id="paperIntro">AXON PERFORMANCE DIGITAL CONTRACT</p><h3 id="paperContractTitle">WAIVER &amp; LIABILITY</h3><span id="paperContractDescription">Core facility waiver.</span></div>
+
+        <div class="contract-layout">
+          <section class="paper-section signer-section">
+            <div class="paper-section-head"><span>01</span><div><b>SIGNER DETAILS</b><small id="signerInstruction">Complete the fields required for this agreement.</small></div></div>
+            <div id="formFields" class="field-board"></div>
+          </section>
+          <section class="paper-section agreement-section">
+            <div class="paper-section-head"><span>02</span><div><b>LEGAL ACKNOWLEDGEMENTS</b><small id="initialInstruction">Draw initials once, then apply them to every required section.</small></div></div>
+            <div class="initials-dock">
+              <div><strong id="initialPadTitle">SET YOUR INITIALS</strong><span id="initialPadHelp">Use your finger or Apple Pencil. Initials are recorded as black ink.</span></div>
+              <button id="clearInitials" type="button">CLEAR</button>
+              <canvas id="initialCanvas" aria-label="Draw initials in black ink"></canvas>
+            </div>
+            <div id="waiverSections" class="term-board"></div>
+          </section>
+        </div>
+
+        <section class="paper-section signature-section">
+          <div class="signature-copy">
+            <label class="consent-row"><input type="checkbox" name="eConsent" required /><span></span><b id="consentText">I agree this serves as my electronic signature.</b></label>
+            <p id="consentDescription">By continuing, I confirm I reviewed the agreement, applied initials beside each acknowledgement, and agree to the terms in this contract.</p>
+            <div class="signature-field-grid">
+              <label id="typedSignatureField">Typed signature<input name="typedSignature" required autocomplete="name" placeholder="Type full legal name" /></label>
+              <label id="signatureDateField">Signature date<input name="signatureDate" required type="date" /></label>
+            </div>
+          </div>
+          <div class="signature-pad-block">
+            <div class="signature-pad-label"><span id="drawnSignatureLabel">SIGN HERE</span><button id="clearSignature" type="button">× CLEAR</button></div>
+            <canvas id="signatureCanvas" aria-label="Draw signature in black ink"></canvas>
+          </div>
+        </section>
+
+        <button class="submit-contract" type="submit"><span>✎</span><b id="submitText">SIGN &amp; SUBMIT</b><i>→</i></button>
+      </section>
+      <footer class="contract-footer-note">A structured PDF contract is generated automatically after signing. It contains the agreement text, captured initials, signer information, electronic consent, and black-ink signature.</footer>
+    </form>
+  </dialog>
+
+  <dialog id="adminLoginDialog" class="admin-dialog" aria-labelledby="adminLoginTitle">
+    <section class="admin-login-card">
+      <button id="closeAdminLogin" class="icon-close" type="button" aria-label="Close">×</button>
+      <p class="eyebrow">STAFF SETTINGS</p><h2 id="adminLoginTitle">ADMIN ACCESS</h2>
+      <p>Open the smart local editor to manage every signer-facing label, legal paragraph, initials prompt, signature language, and export heading.</p>
+      <label>Access code<input id="adminPassword" type="password" autocomplete="current-password" placeholder="Enter staff code" /></label>
+      <button id="unlockAdmin" class="primary-action" type="button">UNLOCK ADMIN</button>
+      <p id="adminError" class="admin-error" role="alert"></p>
+    </section>
+  </dialog>
+
+  <dialog id="adminDialog" class="admin-dialog wide" aria-labelledby="adminTitle">
+    <section class="admin-panel">
+      <header class="admin-panel-header"><div><p class="eyebrow">AXON CONTROL CENTER</p><h2 id="adminTitle">WAIVERS, FIELDS &amp; CONTRACT EXPORTS</h2><p>Configure exactly what a prospect sees before they initial or sign. Changes update the iPad carousel immediately.</p></div><button id="closeAdmin" class="icon-close" type="button" aria-label="Close">×</button></header>
+      <div class="admin-dashboard">
+        <aside class="type-sidebar">
+          <div class="admin-sidebar-head"><div><p class="eyebrow">WAIVER TYPES</p><h3>Agreement pathways</h3></div><button id="addType" class="mini-add" type="button">＋</button></div>
+          <div id="typeList" class="type-list"></div>
+        </aside>
+        <section class="editor-workspace">
+          <div class="editor-toolbar"><div><p class="eyebrow">SMART LOCAL EDITOR</p><h3 id="editorActiveType">Select a waiver type</h3></div><div class="editor-actions"><button id="duplicateType" class="outline-small" type="button">DUPLICATE</button><button id="deleteType" class="danger-small" type="button">DELETE</button><button id="saveType" class="primary-small" type="button">SAVE CHANGES</button></div></div>
+          <div class="editor-tabs" role="tablist"><button class="editor-tab active" data-tab="overview" type="button">Overview</button><button class="editor-tab" data-tab="fields" type="button">Signer Fields</button><button class="editor-tab" data-tab="terms" type="button">Agreement &amp; Initials</button><button class="editor-tab" data-tab="signature" type="button">Signature &amp; PDF</button></div>
+          <div id="editorPanels" class="editor-panels"></div>
+        </section>
+        <aside class="admin-utility">
+          <section class="utility-card"><p class="eyebrow">NOTIFICATIONS</p><h3>Email delivery</h3><label>Automated recipient<input id="notifyRecipient" type="email" placeholder="owner@yourdomain.com" /></label><div class="utility-actions"><button id="saveRecipient" class="primary-small" type="button">SAVE</button><button id="sendTest" class="outline-small" type="button">SEND TEST</button></div><p id="notifyStatus" class="status-copy" aria-live="polite"></p></section>
+          <section class="utility-card"><p class="eyebrow">LOCAL EXPORTS</p><h3>Backup records</h3><button id="exportRecordsPdf" class="outline-small full" type="button">EXPORT ALL AS PDF</button><button id="exportRecordsTxt" class="outline-small full" type="button">EXPORT ALL AS TXT</button><button id="downloadTemplate" class="outline-small full" type="button">DOWNLOAD TEMPLATE JSON</button><label class="upload-label">UPLOAD TEMPLATE JSON<input id="uploadTemplate" type="file" accept=".json,application/json" hidden /></label></section>
+          <section class="utility-card"><p class="eyebrow">GO-LIVE</p><h3>Netlify setup</h3><ol><li>Deploy this folder.</li><li>Add Resend environment variables.</li><li>Approve the recipient email.</li><li>Send a test.</li></ol><button id="openDeploymentInfo" class="outline-small full" type="button">VIEW SETUP DETAILS</button></section>
+        </aside>
+      </div>
+    </section>
+  </dialog>
+
+  <dialog id="successDialog" class="admin-dialog" aria-labelledby="successTitle"><section class="success-card"><div class="success-mark">✓</div><p class="eyebrow">CONTRACT COMPLETE</p><h2 id="successTitle">Signed contract exported.</h2><p id="successCopy">Your high-caliber PDF contract has downloaded on this device.</p><button id="openPdf" class="primary-action" type="button">DOWNLOAD PDF AGAIN</button><button id="finish" class="outline-action full" type="button">DONE</button></section></dialog>
+
+  <dialog id="deploymentDialog" class="admin-dialog" aria-labelledby="deploymentTitle"><section class="deployment-info-card"><button id="closeDeploymentInfo" class="icon-close" type="button" aria-label="Close">×</button><p class="eyebrow">NETLIFY EMAIL DELIVERY</p><h2 id="deploymentTitle">GO-LIVE CHECKLIST</h2><div class="deployment-steps"><div><b>1</b><span>Deploy this folder as a Netlify site. The included <code>netlify.toml</code> enables the serverless notification function.</span></div><div><b>2</b><span>Open Netlify → Site configuration → Environment variables and add:</span></div><pre>RESEND_API_KEY=re_xxxxxxxxx
+FROM_EMAIL=Axon Performance &lt;contracts@yourdomain.com&gt;
+ALLOWED_NOTIFY_EMAILS=owner@yourdomain.com,manager@yourdomain.com</pre><div><b>3</b><span>Verify your sending domain in Resend, then redeploy the Netlify site.</span></div><div><b>4</b><span>In Admin Edit, save a recipient that also appears in <code>ALLOWED_NOTIFY_EMAILS</code>. Use Send Test before live use.</span></div></div><p class="deploy-warning">Static browser storage is for demo use only. Use protected server-side authentication, encrypted storage, audit logging, and legally reviewed electronic-signature policies for long-term production recordkeeping.</p></section></dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
