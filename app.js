@@ -267,63 +267,170 @@ function pdfImage(ops, name, x, y, width, height) { ops.push(`q ${width.toFixed(
 async function createContractPdf(record) {
   let logo = null, initials = null, signature = null;
   try { logo = await assetToJpeg(ASSETS.logoBlue, 620); } catch { /* fallback text branding */ }
-  try { initials = await dataUrlToJpeg(record.initialsImage, 420); } catch { /* no image */ }
-  try { signature = await dataUrlToJpeg(record.signatureImage, 740); } catch { /* no image */ }
+  try { initials = await dataUrlToJpeg(record.initialsImage, 360); } catch { /* no image */ }
+  try { signature = await dataUrlToJpeg(record.signatureImage, 680); } catch { /* no image */ }
+
   const pages = [];
-  const pageSize = { width: 612, height: 792, left: 48, right: 564, top: 718, bottom: 62 };
+  const pageSize = { width: 612, height: 792, left: 34, right: 578, top: 746, bottom: 42 };
+  const usableWidth = pageSize.right - pageSize.left;
   let page;
-  function newPage() { page = { ops: [], y: pageSize.top }; pages.push(page); drawPageHeader(page); }
+
+  function newPage() {
+    page = { ops: [], y: pageSize.top, colY: null };
+    pages.push(page);
+    drawPageHeader(page);
+  }
+
   function drawPageHeader(target) {
-    pdfRect(target.ops, 0, 724, 612, 68, '#07385f'); pdfRect(target.ops, 0, 0, 8, 792, '#1389cf');
-    if (logo) { const ratio = logo.width / logo.height; const h = 34; pdfImage(target.ops, 'Logo', 34, 741, h * ratio, h); }
-    else pdfText(target.ops, 38, 754, 16, 'F2', 'AXON PERFORMANCE', '#60c7ef');
-    pdfText(target.ops, 420, 757, 8, 'F2', 'DIGITAL CONTRACT', '#f8f3e7');
-    pdfText(target.ops, 420, 744, 8, 'F1', cleanPdfText(record.badge), '#c6e9f8');
-    target.y = 702;
-  }
-  function ensure(height) { if (page.y - height < pageSize.bottom) newPage(); }
-  function sectionHeader(label) { ensure(30); pdfRect(page.ops, pageSize.left, page.y - 22, 516, 22, '#e9f3f9', '#b9d5e8'); pdfText(page.ops, pageSize.left + 10, page.y - 15, 9, 'F2', label, '#145c8d'); page.y -= 32; }
-  function lineText(text, size = 10, font = 'F1', color = '#172737', indent = 0, max = 512, leading = null) { const lines = wrapText(text, size, max - indent); const space = leading || size * 1.35; ensure(lines.length * space + 5); lines.forEach(line => { pdfText(page.ops, pageSize.left + indent, page.y - size, size, font, line, color); page.y -= space; }); }
-  function drawDetailCards() {
-    sectionHeader('SIGNER DETAILS'); const pairs = Object.entries(record.fields); const colWidth = 248; let x = pageSize.left;
-    for (let index = 0; index < pairs.length; index += 2) {
-      const row = pairs.slice(index, index + 2); ensure(56); row.forEach(([label, value], col) => { const cx = x + col * (colWidth + 20); pdfRect(page.ops, cx, page.y - 44, colWidth, 40, '#fbfdff', '#cbd9e4'); pdfText(page.ops, cx + 9, page.y - 15, 7.5, 'F2', label.toUpperCase(), '#5b7488'); const rendered = wrapText(value || '—', 10, colWidth - 18)[0] || '—'; pdfText(page.ops, cx + 9, page.y - 31, 10, 'F2', rendered, '#152939'); }); page.y -= 51;
+    // Compact branded contract header: much less vertical space than previous version.
+    pdfRect(target.ops, 0, 758, 612, 34, '#07385f');
+    pdfRect(target.ops, 0, 0, 9, 792, '#1389cf');
+    if (logo) {
+      const ratio = logo.width / logo.height;
+      const h = 21;
+      pdfImage(target.ops, 'Logo', 28, 765, h * ratio, h);
+    } else {
+      pdfText(target.ops, 30, 772, 13, 'F2', 'AXON PERFORMANCE', '#60c7ef');
     }
-    page.y -= 8;
+    pdfText(target.ops, 420, 775, 7.5, 'F2', 'DIGITAL CONTRACT', '#f8f3e7');
+    pdfText(target.ops, 420, 762, 7, 'F1', cleanPdfText(record.badge), '#c6e9f8');
+    target.y = 744;
   }
+
+  function ensure(height) {
+    if (page.y - height < pageSize.bottom) newPage();
+  }
+
+  function miniHeader(label, height = 17) {
+    ensure(height + 6);
+    pdfRect(page.ops, pageSize.left, page.y - height, usableWidth, height, '#e9f3f9', '#bdd5e8', .7);
+    pdfText(page.ops, pageSize.left + 8, page.y - 11, 7.3, 'F2', label, '#145c8d');
+    page.y -= height + 8;
+  }
+
+  function drawIntro() {
+    const title = record.type.toUpperCase();
+    pdfText(page.ops, pageSize.left, page.y - 1, 8.4, 'F2', 'AXON PERFORMANCE DIGITAL AGREEMENT', '#27719f');
+    page.y -= 15;
+    pdfText(page.ops, pageSize.left, page.y - 3, 20, 'F2', title, '#132c41');
+    page.y -= 24;
+    const subtitle = record.template.short || record.template.description || '';
+    wrapText(subtitle, 8.2, usableWidth).slice(0, 2).forEach(line => { pdfText(page.ops, pageSize.left, page.y - 2, 8.2, 'F1', line, '#5e7487'); page.y -= 11; });
+    page.y -= 3;
+    pdfRect(page.ops, pageSize.left, page.y - 24, usableWidth, 23, '#f0f7fb', '#cbddea', .7);
+    pdfText(page.ops, pageSize.left + 8, page.y - 10, 7.1, 'F2', `SUBMISSION ID: ${record.id}`, '#285779');
+    pdfText(page.ops, pageSize.left + 310, page.y - 10, 7.1, 'F2', `SIGNED: ${record.submittedAt}`, '#285779');
+    page.y -= 32;
+  }
+
+  function drawDetailCards() {
+    miniHeader('SIGNER DETAILS', 15);
+    const pairs = Object.entries(record.fields || {});
+    const colGap = 10;
+    const cols = 3;
+    const colW = (usableWidth - colGap * (cols - 1)) / cols;
+    for (let index = 0; index < pairs.length; index += cols) {
+      const row = pairs.slice(index, index + cols);
+      ensure(35);
+      row.forEach(([label, value], col) => {
+        const x = pageSize.left + col * (colW + colGap);
+        pdfRect(page.ops, x, page.y - 29, colW, 27, '#fbfdff', '#cbd9e4', .7);
+        pdfText(page.ops, x + 6, page.y - 10, 5.9, 'F2', label.toUpperCase(), '#5b7488');
+        const rendered = wrapText(value || '-', 7.2, colW - 12)[0] || '-';
+        pdfText(page.ops, x + 6, page.y - 22, 7.2, 'F2', rendered, '#152939');
+      });
+      page.y -= 33;
+    }
+    page.y -= 3;
+  }
+
   function drawTerms() {
-    sectionHeader('LEGAL ACKNOWLEDGEMENTS & INITIALS');
-    record.sections.forEach((section, index) => {
-      const lines = wrapText(section.text, 9.4, 394); const height = Math.max(68, 26 + lines.length * 13.2); ensure(height + 8);
-      pdfRect(page.ops, pageSize.left, page.y - height, 516, height, '#ffffff', '#c8d8e5');
-      pdfRect(page.ops, pageSize.left, page.y - height, 6, height, '#1589cf');
-      pdfText(page.ops, pageSize.left + 16, page.y - 17, 10.5, 'F2', `${String(index + 1).padStart(2, '0')}  ${section.title}`, '#123a5b');
-      let y = page.y - 31; lines.forEach(line => { pdfText(page.ops, pageSize.left + 16, y, 9.4, 'F1', line, '#3d5265'); y -= 13.2; });
-      pdfRect(page.ops, 469, page.y - height + 12, 81, 41, '#f7fbfe', '#8eafc5'); pdfText(page.ops, 478, page.y - height + 43, 6.7, 'F2', 'INITIALS', '#5d7d94');
-      if (section.initialsRequired && initials) { const ratio = initials.width / initials.height; const maxW = 70, maxH = 24; let w = maxW, h = w / ratio; if (h > maxH) { h = maxH; w = h * ratio; } pdfImage(page.ops, 'Initials', 475 + (70 - w) / 2, page.y - height + 16, w, h); }
-      else if (!section.initialsRequired) pdfText(page.ops, 483, page.y - height + 22, 7, 'F1', 'N/A', '#6f8496');
-      page.y -= height + 8;
+    miniHeader('LEGAL ACKNOWLEDGEMENTS & INITIALS', 15);
+    let col = 0;
+    const gap = 14;
+    const colW = (usableWidth - gap) / 2;
+    const termSize = (record.sections || []).length > 7 ? 5.9 : 6.25;
+    const leading = termSize + 1.15;
+    const headingSize = 7.4;
+    const columnTop = page.y;
+    page.colY = [columnTop, columnTop];
+
+    function moveToNextColumn(height) {
+      if (page.colY[col] - height >= pageSize.bottom) return;
+      if (col === 0) {
+        col = 1;
+        return;
+      }
+      newPage();
+      col = 0;
+      page.colY = [page.y, page.y];
+    }
+
+    (record.sections || []).forEach((section, index) => {
+      const textWidth = colW - 16;
+      const lines = wrapText(section.text || '', termSize, textWidth);
+      const height = Math.max(48, 22 + lines.length * leading + 12);
+      moveToNextColumn(height);
+      const x = pageSize.left + col * (colW + gap);
+      const yTop = page.colY[col];
+      pdfRect(page.ops, x, yTop - height, colW, height, '#ffffff', '#c8d8e5', .65);
+      pdfRect(page.ops, x, yTop - height, 4, height, '#1589cf');
+      pdfText(page.ops, x + 9, yTop - 12, headingSize, 'F2', `${String(index + 1).padStart(2, '0')}  ${section.title || 'Acknowledgement'}`, '#123a5b');
+      pdfRect(page.ops, x + colW - 50, yTop - 24, 42, 19, '#f7fbfe', '#8eafc5', .65);
+      pdfText(page.ops, x + colW - 45, yTop - 12, 4.9, 'F2', 'INITIALS', '#5d7d94');
+      if (section.initialsRequired && initials) {
+        const ratio = initials.width / initials.height;
+        const maxW = 32, maxH = 10;
+        let w = maxW, h = w / ratio;
+        if (h > maxH) { h = maxH; w = h * ratio; }
+        pdfImage(page.ops, 'Initials', x + colW - 45 + (34 - w) / 2, yTop - 23 + (10 - h) / 2, w, h);
+      } else if (!section.initialsRequired) {
+        pdfText(page.ops, x + colW - 37, yTop - 21, 5.2, 'F1', 'N/A', '#6f8496');
+      }
+      let y = yTop - 28;
+      lines.forEach(line => { pdfText(page.ops, x + 9, y, termSize, 'F1', line, '#34495c'); y -= leading; });
+      page.colY[col] -= height + 7;
     });
+    page.y = Math.min(...page.colY) - 10;
   }
+
   function drawSignature() {
-    sectionHeader('ELECTRONIC SIGNATURE'); ensure(132);
-    pdfRect(page.ops, pageSize.left, page.y - 118, 516, 112, '#f8fbfd', '#c8d8e5');
-    pdfText(page.ops, pageSize.left + 14, page.y - 22, 8.5, 'F2', 'ELECTRONIC CONSENT', '#145c8d');
-    const consent = record.template.signature.consentText; const consentLines = wrapText(consent, 9.2, 225); consentLines.forEach((line, index) => pdfText(page.ops, pageSize.left + 14, page.y - 39 - index * 12, 9.2, 'F1', line, '#20374a'));
-    pdfText(page.ops, pageSize.left + 14, page.y - 82, 8, 'F2', `${record.template.signature.typedLabel.toUpperCase()}:`, '#5b7488'); pdfText(page.ops, pageSize.left + 14, page.y - 99, 10, 'F2', record.typedSignature, '#172a3b');
-    pdfText(page.ops, pageSize.left + 172, page.y - 82, 8, 'F2', `${record.template.signature.dateLabel.toUpperCase()}:`, '#5b7488'); pdfText(page.ops, pageSize.left + 172, page.y - 99, 10, 'F2', record.signatureDate, '#172a3b');
-    pdfText(page.ops, 332, page.y - 22, 8.5, 'F2', 'DRAWN SIGNATURE', '#145c8d'); pdfRect(page.ops, 332, page.y - 104, 205, 69, '#ffffff', '#8eb5ce');
-    if (signature) { const ratio = signature.width / signature.height; const maxW = 192, maxH = 56; let w = maxW, h = w / ratio; if (h > maxH) { h = maxH; w = h * ratio; } pdfImage(page.ops, 'Signature', 338 + (192 - w) / 2, page.y - 97 + (56 - h) / 2, w, h); }
-    page.y -= 130;
+    const needed = 106;
+    ensure(needed + 12);
+    miniHeader('ELECTRONIC SIGNATURE', 15);
+    ensure(needed);
+    pdfRect(page.ops, pageSize.left, page.y - 88, usableWidth, 82, '#f8fbfd', '#c8d8e5', .75);
+    pdfText(page.ops, pageSize.left + 10, page.y - 18, 7.2, 'F2', 'CONSENT', '#145c8d');
+    const consent = record.template.signature.consentText || '';
+    wrapText(consent, 6.8, 235).slice(0, 4).forEach((line, index) => pdfText(page.ops, pageSize.left + 10, page.y - 31 - index * 8.2, 6.8, 'F1', line, '#20374a'));
+    pdfText(page.ops, pageSize.left + 10, page.y - 68, 6.4, 'F2', `${(record.template.signature.typedLabel || 'Typed Signature').toUpperCase()}:`, '#5b7488');
+    pdfText(page.ops, pageSize.left + 99, page.y - 68, 7.2, 'F2', record.typedSignature || '-', '#172a3b');
+    pdfText(page.ops, pageSize.left + 10, page.y - 80, 6.4, 'F2', `${(record.template.signature.dateLabel || 'Date').toUpperCase()}:`, '#5b7488');
+    pdfText(page.ops, pageSize.left + 99, page.y - 80, 7.2, 'F2', record.signatureDate || '-', '#172a3b');
+    const sigX = pageSize.left + 316;
+    pdfText(page.ops, sigX, page.y - 18, 7.2, 'F2', 'DRAWN SIGNATURE', '#145c8d');
+    pdfRect(page.ops, sigX, page.y - 76, 200, 47, '#ffffff', '#8eb5ce', .75);
+    if (signature) {
+      const ratio = signature.width / signature.height;
+      const maxW = 188, maxH = 36;
+      let w = maxW, h = w / ratio;
+      if (h > maxH) { h = maxH; w = h * ratio; }
+      pdfImage(page.ops, 'Signature', sigX + 6 + (188 - w) / 2, page.y - 70 + (36 - h) / 2, w, h);
+    }
+    page.y -= 100;
   }
+
   newPage();
-  pdfText(page.ops, pageSize.left, page.y - 2, 10, 'F2', 'AXON PERFORMANCE DIGITAL AGREEMENT', '#27719f'); page.y -= 19;
-  pdfText(page.ops, pageSize.left, page.y - 2, 22, 'F2', record.type.toUpperCase(), '#132c41'); page.y -= 28;
-  pdfText(page.ops, pageSize.left, page.y - 2, 10, 'F1', record.template.short || record.template.description, '#5e7487'); page.y -= 24;
-  pdfRect(page.ops, pageSize.left, page.y - 34, 516, 30, '#f0f7fb', '#cbddea'); pdfText(page.ops, pageSize.left + 10, page.y - 15, 8, 'F2', `SUBMISSION ID: ${record.id}`, '#285779'); pdfText(page.ops, 335, page.y - 15, 8, 'F2', `SIGNED: ${record.submittedAt}`, '#285779'); page.y -= 45;
-  drawDetailCards(); drawTerms(); drawSignature();
-  pages.forEach((item, index) => { pdfText(item.ops, 48, 34, 7.5, 'F1', 'Axon Performance - Digital Contract', '#6c8295'); pdfText(item.ops, 505, 34, 7.5, 'F1', `Page ${index + 1} of ${pages.length}`, '#6c8295'); });
-  // Build the PDF objects after all page drawing operations are complete.
+  drawIntro();
+  drawDetailCards();
+  drawTerms();
+  drawSignature();
+
+  pages.forEach((item, index) => {
+    pdfText(item.ops, 36, 24, 6.5, 'F1', 'Axon Performance - Digital Contract', '#6c8295');
+    pdfText(item.ops, 516, 24, 6.5, 'F1', `Page ${index + 1} of ${pages.length}`, '#6c8295');
+  });
+
   const cleanBuilder = new PdfBuilder();
   const f1 = cleanBuilder.addText('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
   const f2 = cleanBuilder.addText('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
