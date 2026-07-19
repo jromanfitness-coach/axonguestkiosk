@@ -50,6 +50,15 @@ const DEFAULT_TYPES = {
     sections: clone(DEFAULT_SECTIONS),
     signature: clone(DEFAULT_SIGNATURE)
   },
+  'Thermal Spa Waiver': {
+    badge: 'THERMAL SPA',
+    description: 'Sauna, recovery, and wellness-use waiver with warm orange accenting.',
+    short: 'Thermal spa recovery agreement',
+    theme: 'orange',
+    fields: [field('fullName', 'Full Legal Name', 'text', 'Enter full legal name', true), field('phone', 'Phone', 'tel', '(555) 555-5555', true), field('email', 'Email', 'email', 'you@example.com', true), field('medicalNotes', 'Health Notes', 'textarea', 'Optional: heat sensitivity, medications, or relevant conditions', false)],
+    sections: clone(DEFAULT_SECTIONS),
+    signature: clone(DEFAULT_SIGNATURE)
+  },
   'Gym Tour': {
     badge: 'VISITOR',
     description: 'Condensed visitor waiver and facility tour check-in.',
@@ -93,7 +102,7 @@ function normalizeType(config, legacySections = DEFAULT_SECTIONS) {
     badge: source.badge || 'WAIVER',
     description: source.description || 'Digital agreement pathway.',
     short: source.short || source.description || 'Digital agreement',
-    theme: ['blue','amber','teal','violet','coral'].includes(source.theme) ? source.theme : 'blue',
+    theme: ['blue','amber','orange','teal','violet','coral'].includes(source.theme) ? source.theme : 'blue',
     fields: (source.fields || []).map(normalizeField),
     sections: (source.sections || legacySections || DEFAULT_SECTIONS).map(normalizeSection),
     signature: { ...clone(DEFAULT_SIGNATURE), ...(source.signature || {}) }
@@ -127,7 +136,30 @@ function persist() {
   localStorage.setItem(STORAGE.recipient, recipient);
 }
 function currentConfig() { return waiverTypes[selectedType]; }
-function colorForTheme(theme) { return ({ blue:'#57c9f1', amber:'#ffc766', teal:'#58d7c2', violet:'#c493f4', coral:'#ff8d86' }[theme] || '#57c9f1'); }
+function colorForTheme(theme) { return themePalette(theme).accent; }
+function themePalette(theme) {
+  const palettes = {
+    blue:   { accent:'#57c9f1', deep:'#0b548f', dark:'#07385f', soft:'#e9f6fb', line:'#bddced', text:'#145c8d', shadow:'#1a88cf' },
+    amber:  { accent:'#ffc766', deep:'#b56310', dark:'#5a310b', soft:'#fff4df', line:'#f0c783', text:'#9b5817', shadow:'#d87a17' },
+    orange: { accent:'#ff9f43', deep:'#bb5516', dark:'#51260b', soft:'#fff0df', line:'#e9b777', text:'#a84d15', shadow:'#d66617' },
+    teal:   { accent:'#58d7c2', deep:'#0f766e', dark:'#0a3d3b', soft:'#e4fbf7', line:'#a5e3d8', text:'#0f6f69', shadow:'#159a8d' },
+    violet: { accent:'#c493f4', deep:'#7342b8', dark:'#321d59', soft:'#f3eafb', line:'#ceb0ea', text:'#6539a2', shadow:'#8952d1' },
+    coral:  { accent:'#ff8d86', deep:'#bc4b4b', dark:'#5a1e24', soft:'#fff0ef', line:'#ecb4b0', text:'#a74343', shadow:'#d35858' }
+  };
+  return palettes[theme] || palettes.blue;
+}
+function applyContractTheme(theme) {
+  const p = themePalette(theme);
+  const node = $('#contractDialog');
+  if (!node) return;
+  node.style.setProperty('--contract-accent', p.accent);
+  node.style.setProperty('--contract-deep', p.deep);
+  node.style.setProperty('--contract-dark', p.dark);
+  node.style.setProperty('--contract-soft', p.soft);
+  node.style.setProperty('--contract-line', p.line);
+  node.style.setProperty('--contract-text-accent', p.text);
+}
+function recordTheme(record) { return record?.template?.theme || waiverTypes[record?.type]?.theme || 'blue'; }
 function displayTitle(value) { return escapeHtml(value).replace(/\s+&\s+/g, ' &<br>').replace(/\s+/g, '<br>'); }
 
 // Kiosk carousel
@@ -193,6 +225,7 @@ function openContract(type) {
   initialsData = ''; signatureData = '';
   initialsPad.clear(); signaturePad.clear();
   renderContract(currentConfig());
+  applyContractTheme(currentConfig().theme);
   dialog($('#contractDialog'), true);
   setTimeout(() => { initialsPad.resize(); signaturePad.resize(); }, 100);
 }
@@ -264,12 +297,17 @@ function wrapText(text, size, maxWidth) { const words = cleanPdfText(text).split
 function pdfText(ops, x, y, size, font, value, color = '#111b25') { const [r,g,b] = pdfColor(color); ops.push(`BT /${font} ${size} Tf ${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} rg 1 0 0 1 ${x.toFixed(1)} ${y.toFixed(1)} Tm (${pdfLiteral(value)}) Tj ET`); }
 function pdfRect(ops, x, y, width, height, fill, stroke = null, line = 1) { if (fill) { const [r,g,b] = pdfColor(fill); ops.push(`${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} rg ${x} ${y} ${width} ${height} re f`); } if (stroke) { const [r,g,b] = pdfColor(stroke); ops.push(`${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} RG ${line} w ${x} ${y} ${width} ${height} re S`); } }
 function pdfImage(ops, name, x, y, width, height) { ops.push(`q ${width.toFixed(1)} 0 0 ${height.toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)} cm /${name} Do Q`); }
+function pdfPalette(record) {
+  const p = themePalette(recordTheme(record));
+  return { top:p.dark, spine:p.deep, accent:p.accent, soft:p.soft, line:p.line, text:p.text, darkText:'#132c41', body:'#34495c', muted:'#5b7488' };
+}
 
 async function createContractPdf(record) {
   let logo = null, initials = null, signature = null;
   try { logo = await assetToJpeg(ASSETS.logoBlue, 620); } catch { /* fallback text branding */ }
   try { initials = await dataUrlToJpeg(record.initialsImage, 360); } catch { /* no image */ }
   try { signature = await dataUrlToJpeg(record.signatureImage, 680); } catch { /* no image */ }
+  const theme = pdfPalette(record);
 
   const pages = [];
   // More aggressive 2-page contract geometry: wider live area, smaller header, tighter bottom margin.
@@ -284,17 +322,17 @@ async function createContractPdf(record) {
   }
 
   function drawPageHeader(target) {
-    pdfRect(target.ops, 0, 768, 612, 24, '#07385f');
-    pdfRect(target.ops, 0, 0, 7, 792, '#1389cf');
+    pdfRect(target.ops, 0, 768, 612, 24, theme.top);
+    pdfRect(target.ops, 0, 0, 7, 792, theme.spine);
     if (logo) {
       const ratio = logo.width / logo.height;
       const h = 15;
       pdfImage(target.ops, 'Logo', 24, 773, h * ratio, h);
     } else {
-      pdfText(target.ops, 24, 777, 10, 'F2', 'AXON PERFORMANCE', '#60c7ef');
+      pdfText(target.ops, 24, 777, 10, 'F2', 'AXON PERFORMANCE', theme.accent);
     }
     pdfText(target.ops, 424, 779, 6.5, 'F2', 'DIGITAL CONTRACT', '#f8f3e7');
-    pdfText(target.ops, 424, 770, 5.8, 'F1', cleanPdfText(record.badge), '#c6e9f8');
+    pdfText(target.ops, 424, 770, 5.8, 'F1', cleanPdfText(record.badge), theme.accent);
     target.y = 762;
   }
 
@@ -302,22 +340,22 @@ async function createContractPdf(record) {
 
   function miniHeader(label, height = 11) {
     ensure(height + 3);
-    pdfRect(page.ops, pageSize.left, page.y - height, usableWidth, height, '#e9f3f9', '#bdd5e8', .55);
-    pdfText(page.ops, pageSize.left + 6, page.y - 7.7, 5.9, 'F2', label, '#145c8d');
+    pdfRect(page.ops, pageSize.left, page.y - height, usableWidth, height, theme.soft, theme.line, .55);
+    pdfText(page.ops, pageSize.left + 6, page.y - 7.7, 5.9, 'F2', label, theme.text);
     page.y -= height + 4;
   }
 
   function drawIntro() {
     const title = record.type.toUpperCase();
     // Dense one-band contract metadata. Avoids wasting half a page on title/submission data.
-    pdfText(page.ops, pageSize.left, page.y - 3, 6.2, 'F2', 'AXON PERFORMANCE DIGITAL AGREEMENT', '#27719f');
-    pdfText(page.ops, pageSize.left, page.y - 16, 14.2, 'F2', title, '#132c41');
+    pdfText(page.ops, pageSize.left, page.y - 3, 6.2, 'F2', 'AXON PERFORMANCE DIGITAL AGREEMENT', theme.text);
+    pdfText(page.ops, pageSize.left, page.y - 16, 14.2, 'F2', title, theme.darkText);
     const subtitle = record.template.short || record.template.description || '';
     const subLine = wrapText(subtitle, 6.2, 205)[0] || '';
     if (subLine) pdfText(page.ops, pageSize.left + 318, page.y - 8, 6.2, 'F1', subLine, '#5e7487');
-    pdfRect(page.ops, pageSize.left + 318, page.y - 25, 248, 14, '#f0f7fb', '#cbddea', .5);
-    pdfText(page.ops, pageSize.left + 324, page.y - 19, 5.3, 'F2', `ID: ${record.id}`, '#285779');
-    pdfText(page.ops, pageSize.left + 430, page.y - 19, 5.3, 'F2', `SIGNED: ${record.submittedAt}`, '#285779');
+    pdfRect(page.ops, pageSize.left + 318, page.y - 25, 248, 14, theme.soft, theme.line, .5);
+    pdfText(page.ops, pageSize.left + 324, page.y - 19, 5.3, 'F2', `ID: ${record.id}`, theme.text);
+    pdfText(page.ops, pageSize.left + 430, page.y - 19, 5.3, 'F2', `SIGNED: ${record.submittedAt}`, theme.text);
     page.y -= 33;
   }
 
@@ -332,7 +370,7 @@ async function createContractPdf(record) {
       ensure(23);
       row.forEach(([label, value], col) => {
         const x = pageSize.left + col * (colW + colGap);
-        pdfRect(page.ops, x, page.y - 19, colW, 18, '#fbfdff', '#cbd9e4', .55);
+        pdfRect(page.ops, x, page.y - 19, colW, 18, '#fbfdff', theme.line, .55);
         pdfText(page.ops, x + 4, page.y - 7, 4.8, 'F2', label.toUpperCase(), '#5b7488');
         const rendered = wrapText(value || '-', 5.8, colW - 8)[0] || '-';
         pdfText(page.ops, x + 4, page.y - 15, 5.8, 'F2', rendered, '#152939');
@@ -367,12 +405,12 @@ async function createContractPdf(record) {
       moveToColumn(height);
       const x = pageSize.left + col * (colW + gap);
       const yTop = page.colY[col];
-      pdfRect(page.ops, x, yTop - height, colW, height, '#ffffff', '#c8d8e5', .45);
-      pdfRect(page.ops, x, yTop - height, 2.8, height, '#1589cf');
+      pdfRect(page.ops, x, yTop - height, colW, height, '#ffffff', theme.line, .45);
+      pdfRect(page.ops, x, yTop - height, 2.8, height, theme.spine);
       const titleLine = `${String(index + 1).padStart(2, '0')} ${section.title || 'Acknowledgement'}`;
-      pdfText(page.ops, x + 6, yTop - 8.5, headingSize, 'F2', titleLine.slice(0, 44), '#123a5b');
-      pdfRect(page.ops, x + colW - 37, yTop - 17, 31, 12.5, '#f7fbfe', '#8eafc5', .45);
-      pdfText(page.ops, x + colW - 34, yTop - 8.7, 3.65, 'F2', 'INITIALS', '#5d7d94');
+      pdfText(page.ops, x + 6, yTop - 8.5, headingSize, 'F2', titleLine.slice(0, 44), theme.text);
+      pdfRect(page.ops, x + colW - 37, yTop - 17, 31, 12.5, theme.soft, theme.line, .45);
+      pdfText(page.ops, x + colW - 34, yTop - 8.7, 3.65, 'F2', 'INITIALS', theme.muted);
       if (section.initialsRequired && initials) {
         const ratio = initials.width / initials.height;
         const maxW = 24, maxH = 6.5;
@@ -394,8 +432,8 @@ async function createContractPdf(record) {
     ensure(needed + 8);
     miniHeader('ELECTRONIC SIGNATURE', 10);
     ensure(needed);
-    pdfRect(page.ops, pageSize.left, page.y - 55, usableWidth, 51, '#f8fbfd', '#c8d8e5', .55);
-    pdfText(page.ops, pageSize.left + 8, page.y - 13, 5.8, 'F2', 'CONSENT', '#145c8d');
+    pdfRect(page.ops, pageSize.left, page.y - 55, usableWidth, 51, theme.soft, theme.line, .55);
+    pdfText(page.ops, pageSize.left + 8, page.y - 13, 5.8, 'F2', 'CONSENT', theme.text);
     const consent = record.template.signature.consentText || '';
     wrapText(consent, 5.1, 260).slice(0, 3).forEach((line, index) => pdfText(page.ops, pageSize.left + 8, page.y - 22 - index * 6.3, 5.1, 'F1', line, '#20374a'));
     pdfText(page.ops, pageSize.left + 8, page.y - 45, 5.1, 'F2', `${(record.template.signature.typedLabel || 'Typed Signature').toUpperCase()}:`, '#5b7488');
@@ -403,8 +441,8 @@ async function createContractPdf(record) {
     pdfText(page.ops, pageSize.left + 226, page.y - 45, 5.1, 'F2', `${(record.template.signature.dateLabel || 'Date').toUpperCase()}:`, '#5b7488');
     pdfText(page.ops, pageSize.left + 259, page.y - 45, 5.7, 'F2', record.signatureDate || '-', '#172a3b');
     const sigX = pageSize.left + 355;
-    pdfText(page.ops, sigX, page.y - 13, 5.8, 'F2', 'DRAWN SIGNATURE', '#145c8d');
-    pdfRect(page.ops, sigX, page.y - 47, 190, 29, '#ffffff', '#8eb5ce', .55);
+    pdfText(page.ops, sigX, page.y - 13, 5.8, 'F2', 'DRAWN SIGNATURE', theme.text);
+    pdfRect(page.ops, sigX, page.y - 47, 190, 29, '#ffffff', theme.line, .55);
     if (signature) {
       const ratio = signature.width / signature.height;
       const maxW = 178, maxH = 20;
@@ -422,8 +460,8 @@ async function createContractPdf(record) {
   drawSignature();
 
   pages.forEach((item, index) => {
-    pdfText(item.ops, 24, 13, 5.2, 'F1', 'Axon Performance - Digital Contract', '#6c8295');
-    pdfText(item.ops, 534, 13, 5.2, 'F1', `Page ${index + 1} of ${pages.length}`, '#6c8295');
+    pdfText(item.ops, 24, 13, 5.2, 'F1', 'Axon Performance - Digital Contract', theme.muted);
+    pdfText(item.ops, 534, 13, 5.2, 'F1', `Page ${index + 1} of ${pages.length}`, theme.muted);
   });
 
   const cleanBuilder = new PdfBuilder();
@@ -460,7 +498,7 @@ $('#waiverForm').addEventListener('submit', async event => {
     fields: fieldValues(fd, config), sections: clone(config.sections),
     typedSignature: textSafe(fd.get('typedSignature')), signatureDate: textSafe(fd.get('signatureDate')),
     eConsent: fd.get('eConsent') === 'on', initialsImage: initialsData, signatureImage: signatureData,
-    template: clone({ badge: config.badge, description: config.description, short: config.short, signature: config.signature })
+    template: clone({ badge: config.badge, description: config.description, short: config.short, theme: config.theme, signature: config.signature })
   };
   records.unshift(record); latestRecord = record; persist();
   const slug = (record.fields['Full Legal Name'] || 'contract').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -483,7 +521,7 @@ function setDraftValue(path, value) { const parts = path.split('.'); let target 
 function labelInput(label, value, path, options = {}) { const type = options.type || 'text'; const isArea = options.area; return `<label class="editor-label">${escapeHtml(label)}${options.help ? `<small>${escapeHtml(options.help)}</small>` : ''}${isArea ? `<textarea data-path="${escapeHtml(path)}">${escapeHtml(value || '')}</textarea>` : type === 'select' ? `<select data-path="${escapeHtml(path)}">${options.options.map(item => `<option value="${item.value}" ${item.value === value ? 'selected' : ''}>${item.label}</option>`).join('')}</select>` : `<input data-path="${escapeHtml(path)}" type="${type}" value="${escapeHtml(value || '')}" placeholder="${escapeHtml(options.placeholder || '')}" />`}</label>`; }
 function bindDraftInputs(root = $('#editorPanels')) { $$('[data-path]', root).forEach(input => input.addEventListener('input', () => { const value = input.type === 'checkbox' ? input.checked : input.value; setDraftValue(input.dataset.path, value); renderTypeList(); })); }
 function renderOverviewPanel(config) {
-  return `<section class="editor-panel" data-panel="overview"><div class="board-grid"><article class="editor-card"><h4>Tile & pathway copy</h4>${labelInput('Waiver type name', editorTypeName, 'nameDraft', { placeholder: 'Visible tile title' })}${labelInput('Badge / category', config.badge, 'badge')}${labelInput('Tile description', config.description, 'description', { area: true, help: 'Shown on the iPad carousel.' })}</article><article class="editor-card"><h4>Contract heading</h4>${labelInput('Short agreement subtitle', config.short, 'short', { placeholder: 'Shown under the contract heading' })}${labelInput('Accent theme', config.theme, 'theme', { type: 'select', options: [{value:'blue',label:'Axon Blue'},{value:'amber',label:'Day Pass Amber'},{value:'teal',label:'Tour Teal'},{value:'violet',label:'Client Violet'},{value:'coral',label:'Coral'}] })}${labelInput('PDF document title', config.signature.pdfTitle, 'signature.pdfTitle', { placeholder: 'Digital Contract' })}<div class="add-row"><span>Live changes remain a draft until you tap Save Changes.</span></div></article></div></section>`;
+  return `<section class="editor-panel" data-panel="overview"><div class="board-grid"><article class="editor-card"><h4>Tile & pathway copy</h4>${labelInput('Waiver type name', editorTypeName, 'nameDraft', { placeholder: 'Visible tile title' })}${labelInput('Badge / category', config.badge, 'badge')}${labelInput('Tile description', config.description, 'description', { area: true, help: 'Shown on the iPad carousel.' })}</article><article class="editor-card"><h4>Contract heading</h4>${labelInput('Short agreement subtitle', config.short, 'short', { placeholder: 'Shown under the contract heading' })}${labelInput('Accent theme', config.theme, 'theme', { type: 'select', options: [{value:'blue',label:'Axon Blue'},{value:'amber',label:'Day Pass Amber'},{value:'orange',label:'Thermal Spa Orange'},{value:'teal',label:'Tour Teal'},{value:'violet',label:'Client Violet'},{value:'coral',label:'Coral'}] })}${labelInput('PDF document title', config.signature.pdfTitle, 'signature.pdfTitle', { placeholder: 'Digital Contract' })}<div class="add-row"><span>Live changes remain a draft until you tap Save Changes.</span></div></article></div></section>`;
 }
 function renderFieldsPanel(config) {
   return `<section class="editor-panel" data-panel="fields" hidden><div class="editor-card"><h4>Signer-facing fields</h4><p class="helper-copy">Every label, placeholder, field type, and requirement can be edited here. This is exactly what the prospect sees before signing.</p><div class="field-list">${config.fields.map((item, index) => `<article class="smart-card"><div class="smart-card-head"><b>FIELD ${String(index + 1).padStart(2, '0')}</b><div class="smart-card-tools"><button type="button" data-move-field="${index}:up" aria-label="Move field up">↑</button><button type="button" data-move-field="${index}:down" aria-label="Move field down">↓</button><button type="button" data-remove-field="${index}" aria-label="Remove field">×</button></div></div><div class="smart-card-grid">${labelInput('Label', item.label, `fields.${index}.label`)}${labelInput('Type', item.type, `fields.${index}.type`, { type:'select', options:[{value:'text',label:'Text'},{value:'email',label:'Email'},{value:'tel',label:'Phone'},{value:'date',label:'Date'},{value:'textarea',label:'Long text'}] })}<label class="editor-label">Required<input type="checkbox" data-path="fields.${index}.required" ${item.required ? 'checked' : ''} /></label>${labelInput('Placeholder / field hint', item.placeholder, `fields.${index}.placeholder`, { placeholder:'Guidance visible inside field', help:'This prospect-facing text appears inside the field.', area:true })}</div></article>`).join('')}</div><div class="add-row"><span>Add only the information needed for this waiver type.</span><button id="addField" type="button">＋ ADD SIGNER FIELD</button></div></div></section>`;
@@ -568,7 +606,7 @@ $('#deleteType').addEventListener('click', deleteActiveType);
 $('#saveType').addEventListener('click', saveActiveType);
 $$('.editor-tab').forEach(tab => tab.addEventListener('click', () => { activeTab = tab.dataset.tab; renderAdminWorkspace(); }));
 $('#saveRecipient').addEventListener('click', () => { const value = $('#notifyRecipient').value.trim().toLowerCase(); if (!/^\S+@\S+\.\S+$/.test(value)) { setNotifyStatus('Enter a valid email address.', 'error'); return; } recipient = value; persist(); setNotifyStatus(`Recipient saved: ${recipient}. Add it to ALLOWED_NOTIFY_EMAILS before sending live notifications.`, 'success'); });
-$('#sendTest').addEventListener('click', async () => { const value = $('#notifyRecipient').value.trim().toLowerCase(); if (!/^\S+@\S+\.\S+$/.test(value)) { setNotifyStatus('Save a valid recipient first.', 'error'); return; } recipient = value; persist(); setNotifyStatus('Sending test notification…'); const test = { id:'AX-TEST', submittedAt:new Date().toLocaleString(), type:'System Test', badge:'TEST', fields:{'Full Legal Name':'Axon Performance test notification'}, sections:[], eConsent:true, template:{signature:DEFAULT_SIGNATURE} }; const result = await notifyRecord(test); setNotifyStatus(result.ok ? 'Test sent successfully.' : `Test failed: ${result.message || 'Check Netlify variables.'}`, result.ok ? 'success' : 'error'); });
+$('#sendTest').addEventListener('click', async () => { const value = $('#notifyRecipient').value.trim().toLowerCase(); if (!/^\S+@\S+\.\S+$/.test(value)) { setNotifyStatus('Save a valid recipient first.', 'error'); return; } recipient = value; persist(); setNotifyStatus('Sending test notification…'); const test = { id:'AX-TEST', submittedAt:new Date().toLocaleString(), type:'System Test', badge:'TEST', fields:{'Full Legal Name':'Axon Performance test notification'}, sections:[], eConsent:true, template:{signature:DEFAULT_SIGNATURE,theme:'blue'} }; const result = await notifyRecord(test); setNotifyStatus(result.ok ? 'Test sent successfully.' : `Test failed: ${result.message || 'Check Netlify variables.'}`, result.ok ? 'success' : 'error'); });
 $('#exportRecordsPdf').addEventListener('click', async () => { if (!records.length) { alert('There are no local contracts to export yet.'); return; } const button = $('#exportRecordsPdf'); button.textContent = 'EXPORTING…'; button.disabled = true; try { for (const record of records.slice(0, 20)) await downloadPdfContract(record); } finally { button.textContent = 'DOWNLOAD ALL PDFS'; button.disabled = false; } });
 $('#downloadTemplate').addEventListener('click', () => downloadText(JSON.stringify(waiverTypes, null, 2), 'axon-performance-waiver-template.json'));
 $('#uploadTemplate').addEventListener('change', async event => { const file = event.target.files[0]; if (!file) return; try { const incoming = JSON.parse(await file.text()); if (!incoming || typeof incoming !== 'object') throw new Error('Invalid template'); waiverTypes = Object.fromEntries(Object.entries(incoming).map(([name, cfg]) => [name, normalizeType(cfg)])); selectedType = Object.keys(waiverTypes)[0]; editorTypeName = selectedType; persist(); refreshAdmin(); renderTiles(); setNotifyStatus('Template uploaded and normalized for this device.', 'success'); } catch { setNotifyStatus('Template could not be loaded. Upload a valid Axon template JSON.', 'error'); } event.target.value = ''; });

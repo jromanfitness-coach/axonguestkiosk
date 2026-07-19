@@ -16,3 +16,19 @@
 .pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 14px}.pin-pad button{min-height:50px;border:1px solid rgba(99,211,253,.28);border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03));color:#f4f8fb;font-weight:900;letter-spacing:.08em;box-shadow:inset 0 1px rgba(255,255,255,.08);cursor:pointer}.pin-pad button:active{transform:translateY(1px);background:rgba(99,211,253,.16)}.pin-pad .pin-wide{grid-column:1/-1;color:#63d3fd}.admin-error.success{color:#76f7a9}.admin-login-card input{font-size:22px;text-align:center;letter-spacing:.18em;font-weight:900}.admin-login-card .primary-action{margin-top:2px}
 /* Restored original type-in Admin PIN flow */
 .pin-pad{display:none!important}.admin-login-card label{margin-top:14px}.admin-login-card input#adminPassword{font-size:22px;letter-spacing:.08em;text-align:center}
+
+/* Contract accent sync: exported/PDF themes also tint the in-kiosk agreement shell. */
+.contract-dialog{--contract-accent:#57c9f1;--contract-deep:#0b548f;--contract-dark:#07385f;--contract-soft:#e9f6fb;--contract-line:#bddced;--contract-text-accent:#145c8d;border-color:color-mix(in srgb,var(--contract-accent) 64%,transparent)}
+.contract-dialog .paper-ribbon{background:linear-gradient(180deg,var(--contract-dark),var(--contract-deep) 52%,var(--contract-dark))}
+.contract-dialog .paper-ribbon:before,.contract-dialog .paper-ribbon:after{background:linear-gradient(135deg,color-mix(in srgb,var(--contract-accent) 66%,var(--contract-deep)) 0 38%,transparent 39%)}
+.contract-dialog .paper-meta b,.contract-dialog .paper-title-block p,.contract-dialog .initials-dock strong,.contract-dialog .signature-pad-label,.contract-dialog .signature-pad-label button{color:var(--contract-text-accent)}
+.contract-dialog .paper-section-head>span{background:var(--contract-soft);color:var(--contract-text-accent)}
+.contract-dialog .paper-section,.contract-dialog .term-row,.contract-dialog .signature-section,.contract-dialog .initials-dock{border-color:var(--contract-line)}
+.contract-dialog .field-board input:focus,.contract-dialog .field-board textarea:focus,.contract-dialog .signature-field-grid input:focus{outline-color:color-mix(in srgb,var(--contract-accent) 22%,transparent);border-color:var(--contract-deep)}
+.contract-dialog .initials-dock,.contract-dialog .initial-slot{background:color-mix(in srgb,var(--contract-soft) 80%,#fff)}
+.contract-dialog .initials-dock button,.contract-dialog .apply-initials{border-color:var(--contract-line);color:var(--contract-text-accent)}
+.contract-dialog .consent-row span{border-color:var(--contract-deep)}
+.contract-dialog .consent-row input:checked+span:after{background:var(--contract-deep)}
+.contract-dialog .submit-contract{border-color:var(--contract-deep);background:linear-gradient(105deg,var(--contract-dark),var(--contract-deep) 55%,color-mix(in srgb,var(--contract-deep) 74%,#ffffff));box-shadow:0 13px 25px color-mix(in srgb,var(--contract-deep) 30%,transparent)}
+.contract-dialog .signature-pad-block canvas,.contract-dialog .initials-dock canvas{border-color:var(--contract-line)}
+.theme-orange{--tile:#ff9f43}.theme-amber{--tile:#ffc766}
