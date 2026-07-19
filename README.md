@@ -10,7 +10,7 @@ This is a self-contained, Netlify-ready iPad waiver portal using the supplied Ax
 - Agreement-level editing: exact legal title/text for every section, initials-required switch, reorder, remove, add.
 - Signature-level editing: consent language, instructions, typed field labels, signature label, submit text, and PDF document title.
 - Every signed record saves a snapshot of the exact text displayed to the prospect.
-- Automatic native PDF download after signing. The PDF is a structured multi-page letter-size contract with Axon branding, full waiver text, a legal initials box beside each section, signer data, consent, typed signature, and black-ink drawn signature.
+- Automatic PDF-only download after signing. The PDF uses a compressed two-page-oriented letter layout with Axon branding, full waiver text, legal initials beside each required section, signer data, consent, typed signature, and black-ink drawn signature.
 
 ## iPad use
 1. Deploy to Netlify.
@@ -29,6 +29,7 @@ This is a self-contained, Netlify-ready iPad waiver portal using the supplied Ax
    - **Agreement & Initials:** every legal acknowledgement and the text around the initialing workflow.
    - **Signature & PDF:** the electronic-consent text, signature labels, and final submit wording.
 5. Tap **SAVE CHANGES**. The carousel updates immediately.
+6. Signed submissions appear in **Stored contracts**, where an admin can re-download individual PDFs or download all local PDFs again.
 
 ## Netlify deployment
 1. Upload this entire folder to Netlify Drop or connect it to a Git repository.
@@ -54,3 +55,9 @@ The PDF is generated locally and downloaded directly to the iPad because it incl
 
 ## Production hardening
 The static version is ideal for a polished demo and kiosk interface but is not a complete immutable e-signature service. Before treating it as a long-term legal record system, add server-side staff authentication, encrypted database/object storage for originals, immutable audit logs, retention policies, and legal review of the waiver/e-signature process.
+
+## PDF-only exports and local submissions
+- The signing flow now automatically downloads the signed contract as PDF only.
+- The signed record is also stored in the browser-local Admin Edit portal under **Stored contracts**.
+- Admin can re-download an individual stored submission PDF or batch download recent local PDFs.
+- Browser-local storage is convenient for the kiosk but should be paired with backend storage before relying on it as long-term legal retention.

@@ -271,7 +271,8 @@ async function createContractPdf(record) {
   try { signature = await dataUrlToJpeg(record.signatureImage, 680); } catch { /* no image */ }
 
   const pages = [];
-  const pageSize = { width: 612, height: 792, left: 34, right: 578, top: 746, bottom: 42 };
+  // More aggressive 2-page contract geometry: wider live area, smaller header, tighter bottom margin.
+  const pageSize = { width: 612, height: 792, left: 24, right: 590, top: 766, bottom: 24 };
   const usableWidth = pageSize.right - pageSize.left;
   let page;
 
@@ -282,142 +283,135 @@ async function createContractPdf(record) {
   }
 
   function drawPageHeader(target) {
-    // Compact branded contract header: much less vertical space than previous version.
-    pdfRect(target.ops, 0, 758, 612, 34, '#07385f');
-    pdfRect(target.ops, 0, 0, 9, 792, '#1389cf');
+    pdfRect(target.ops, 0, 768, 612, 24, '#07385f');
+    pdfRect(target.ops, 0, 0, 7, 792, '#1389cf');
     if (logo) {
       const ratio = logo.width / logo.height;
-      const h = 21;
-      pdfImage(target.ops, 'Logo', 28, 765, h * ratio, h);
+      const h = 15;
+      pdfImage(target.ops, 'Logo', 24, 773, h * ratio, h);
     } else {
-      pdfText(target.ops, 30, 772, 13, 'F2', 'AXON PERFORMANCE', '#60c7ef');
+      pdfText(target.ops, 24, 777, 10, 'F2', 'AXON PERFORMANCE', '#60c7ef');
     }
-    pdfText(target.ops, 420, 775, 7.5, 'F2', 'DIGITAL CONTRACT', '#f8f3e7');
-    pdfText(target.ops, 420, 762, 7, 'F1', cleanPdfText(record.badge), '#c6e9f8');
-    target.y = 744;
+    pdfText(target.ops, 424, 779, 6.5, 'F2', 'DIGITAL CONTRACT', '#f8f3e7');
+    pdfText(target.ops, 424, 770, 5.8, 'F1', cleanPdfText(record.badge), '#c6e9f8');
+    target.y = 762;
   }
 
-  function ensure(height) {
-    if (page.y - height < pageSize.bottom) newPage();
-  }
+  function ensure(height) { if (page.y - height < pageSize.bottom) newPage(); }
 
-  function miniHeader(label, height = 17) {
-    ensure(height + 6);
-    pdfRect(page.ops, pageSize.left, page.y - height, usableWidth, height, '#e9f3f9', '#bdd5e8', .7);
-    pdfText(page.ops, pageSize.left + 8, page.y - 11, 7.3, 'F2', label, '#145c8d');
-    page.y -= height + 8;
+  function miniHeader(label, height = 11) {
+    ensure(height + 3);
+    pdfRect(page.ops, pageSize.left, page.y - height, usableWidth, height, '#e9f3f9', '#bdd5e8', .55);
+    pdfText(page.ops, pageSize.left + 6, page.y - 7.7, 5.9, 'F2', label, '#145c8d');
+    page.y -= height + 4;
   }
 
   function drawIntro() {
     const title = record.type.toUpperCase();
-    pdfText(page.ops, pageSize.left, page.y - 1, 8.4, 'F2', 'AXON PERFORMANCE DIGITAL AGREEMENT', '#27719f');
-    page.y -= 15;
-    pdfText(page.ops, pageSize.left, page.y - 3, 20, 'F2', title, '#132c41');
-    page.y -= 24;
+    // Dense one-band contract metadata. Avoids wasting half a page on title/submission data.
+    pdfText(page.ops, pageSize.left, page.y - 3, 6.2, 'F2', 'AXON PERFORMANCE DIGITAL AGREEMENT', '#27719f');
+    pdfText(page.ops, pageSize.left, page.y - 16, 14.2, 'F2', title, '#132c41');
     const subtitle = record.template.short || record.template.description || '';
-    wrapText(subtitle, 8.2, usableWidth).slice(0, 2).forEach(line => { pdfText(page.ops, pageSize.left, page.y - 2, 8.2, 'F1', line, '#5e7487'); page.y -= 11; });
-    page.y -= 3;
-    pdfRect(page.ops, pageSize.left, page.y - 24, usableWidth, 23, '#f0f7fb', '#cbddea', .7);
-    pdfText(page.ops, pageSize.left + 8, page.y - 10, 7.1, 'F2', `SUBMISSION ID: ${record.id}`, '#285779');
-    pdfText(page.ops, pageSize.left + 310, page.y - 10, 7.1, 'F2', `SIGNED: ${record.submittedAt}`, '#285779');
-    page.y -= 32;
+    const subLine = wrapText(subtitle, 6.2, 205)[0] || '';
+    if (subLine) pdfText(page.ops, pageSize.left + 318, page.y - 8, 6.2, 'F1', subLine, '#5e7487');
+    pdfRect(page.ops, pageSize.left + 318, page.y - 25, 248, 14, '#f0f7fb', '#cbddea', .5);
+    pdfText(page.ops, pageSize.left + 324, page.y - 19, 5.3, 'F2', `ID: ${record.id}`, '#285779');
+    pdfText(page.ops, pageSize.left + 430, page.y - 19, 5.3, 'F2', `SIGNED: ${record.submittedAt}`, '#285779');
+    page.y -= 33;
   }
 
   function drawDetailCards() {
-    miniHeader('SIGNER DETAILS', 15);
+    miniHeader('SIGNER DETAILS', 10);
     const pairs = Object.entries(record.fields || {});
-    const colGap = 10;
-    const cols = 3;
+    const colGap = 6;
+    const cols = 4;
     const colW = (usableWidth - colGap * (cols - 1)) / cols;
     for (let index = 0; index < pairs.length; index += cols) {
       const row = pairs.slice(index, index + cols);
-      ensure(35);
+      ensure(23);
       row.forEach(([label, value], col) => {
         const x = pageSize.left + col * (colW + colGap);
-        pdfRect(page.ops, x, page.y - 29, colW, 27, '#fbfdff', '#cbd9e4', .7);
-        pdfText(page.ops, x + 6, page.y - 10, 5.9, 'F2', label.toUpperCase(), '#5b7488');
-        const rendered = wrapText(value || '-', 7.2, colW - 12)[0] || '-';
-        pdfText(page.ops, x + 6, page.y - 22, 7.2, 'F2', rendered, '#152939');
+        pdfRect(page.ops, x, page.y - 19, colW, 18, '#fbfdff', '#cbd9e4', .55);
+        pdfText(page.ops, x + 4, page.y - 7, 4.8, 'F2', label.toUpperCase(), '#5b7488');
+        const rendered = wrapText(value || '-', 5.8, colW - 8)[0] || '-';
+        pdfText(page.ops, x + 4, page.y - 15, 5.8, 'F2', rendered, '#152939');
       });
-      page.y -= 33;
+      page.y -= 22;
     }
-    page.y -= 3;
+    page.y -= 2;
   }
 
   function drawTerms() {
-    miniHeader('LEGAL ACKNOWLEDGEMENTS & INITIALS', 15);
+    miniHeader('LEGAL ACKNOWLEDGEMENTS & INITIALS', 10);
     let col = 0;
-    const gap = 14;
-    const colW = (usableWidth - gap) / 2;
-    const termSize = (record.sections || []).length > 7 ? 5.9 : 6.25;
-    const leading = termSize + 1.15;
-    const headingSize = 7.4;
-    const columnTop = page.y;
-    page.colY = [columnTop, columnTop];
+    const gap = 8;
+    const cols = 3;
+    const colW = (usableWidth - gap * (cols - 1)) / cols;
+    const sectionCount = (record.sections || []).length;
+    const termSize = sectionCount > 8 ? 4.45 : 4.75;
+    const leading = termSize + .54;
+    const headingSize = 5.85;
+    page.colY = Array(cols).fill(page.y);
 
-    function moveToNextColumn(height) {
+    function moveToColumn(height) {
       if (page.colY[col] - height >= pageSize.bottom) return;
-      if (col === 0) {
-        col = 1;
-        return;
-      }
-      newPage();
-      col = 0;
-      page.colY = [page.y, page.y];
+      if (col < cols - 1) { col += 1; return; }
+      newPage(); col = 0; page.colY = Array(cols).fill(page.y);
     }
 
     (record.sections || []).forEach((section, index) => {
-      const textWidth = colW - 16;
+      const textWidth = colW - 12;
       const lines = wrapText(section.text || '', termSize, textWidth);
-      const height = Math.max(48, 22 + lines.length * leading + 12);
-      moveToNextColumn(height);
+      const height = Math.max(30, 14 + lines.length * leading + 7);
+      moveToColumn(height);
       const x = pageSize.left + col * (colW + gap);
       const yTop = page.colY[col];
-      pdfRect(page.ops, x, yTop - height, colW, height, '#ffffff', '#c8d8e5', .65);
-      pdfRect(page.ops, x, yTop - height, 4, height, '#1589cf');
-      pdfText(page.ops, x + 9, yTop - 12, headingSize, 'F2', `${String(index + 1).padStart(2, '0')}  ${section.title || 'Acknowledgement'}`, '#123a5b');
-      pdfRect(page.ops, x + colW - 50, yTop - 24, 42, 19, '#f7fbfe', '#8eafc5', .65);
-      pdfText(page.ops, x + colW - 45, yTop - 12, 4.9, 'F2', 'INITIALS', '#5d7d94');
+      pdfRect(page.ops, x, yTop - height, colW, height, '#ffffff', '#c8d8e5', .45);
+      pdfRect(page.ops, x, yTop - height, 2.8, height, '#1589cf');
+      const titleLine = `${String(index + 1).padStart(2, '0')} ${section.title || 'Acknowledgement'}`;
+      pdfText(page.ops, x + 6, yTop - 8.5, headingSize, 'F2', titleLine.slice(0, 44), '#123a5b');
+      pdfRect(page.ops, x + colW - 37, yTop - 17, 31, 12.5, '#f7fbfe', '#8eafc5', .45);
+      pdfText(page.ops, x + colW - 34, yTop - 8.7, 3.65, 'F2', 'INITIALS', '#5d7d94');
       if (section.initialsRequired && initials) {
         const ratio = initials.width / initials.height;
-        const maxW = 32, maxH = 10;
+        const maxW = 24, maxH = 6.5;
         let w = maxW, h = w / ratio;
         if (h > maxH) { h = maxH; w = h * ratio; }
-        pdfImage(page.ops, 'Initials', x + colW - 45 + (34 - w) / 2, yTop - 23 + (10 - h) / 2, w, h);
+        pdfImage(page.ops, 'Initials', x + colW - 33 + (24 - w) / 2, yTop - 16 + (6.5 - h) / 2, w, h);
       } else if (!section.initialsRequired) {
-        pdfText(page.ops, x + colW - 37, yTop - 21, 5.2, 'F1', 'N/A', '#6f8496');
+        pdfText(page.ops, x + colW - 27, yTop - 14.4, 4.2, 'F1', 'N/A', '#6f8496');
       }
-      let y = yTop - 28;
-      lines.forEach(line => { pdfText(page.ops, x + 9, y, termSize, 'F1', line, '#34495c'); y -= leading; });
-      page.colY[col] -= height + 7;
+      let y = yTop - 20;
+      lines.forEach(line => { pdfText(page.ops, x + 6, y, termSize, 'F1', line, '#34495c'); y -= leading; });
+      page.colY[col] -= height + 4.5;
     });
-    page.y = Math.min(...page.colY) - 10;
+    page.y = Math.min(...page.colY) - 5;
   }
 
   function drawSignature() {
-    const needed = 106;
-    ensure(needed + 12);
-    miniHeader('ELECTRONIC SIGNATURE', 15);
+    const needed = 65;
+    ensure(needed + 8);
+    miniHeader('ELECTRONIC SIGNATURE', 10);
     ensure(needed);
-    pdfRect(page.ops, pageSize.left, page.y - 88, usableWidth, 82, '#f8fbfd', '#c8d8e5', .75);
-    pdfText(page.ops, pageSize.left + 10, page.y - 18, 7.2, 'F2', 'CONSENT', '#145c8d');
+    pdfRect(page.ops, pageSize.left, page.y - 55, usableWidth, 51, '#f8fbfd', '#c8d8e5', .55);
+    pdfText(page.ops, pageSize.left + 8, page.y - 13, 5.8, 'F2', 'CONSENT', '#145c8d');
     const consent = record.template.signature.consentText || '';
-    wrapText(consent, 6.8, 235).slice(0, 4).forEach((line, index) => pdfText(page.ops, pageSize.left + 10, page.y - 31 - index * 8.2, 6.8, 'F1', line, '#20374a'));
-    pdfText(page.ops, pageSize.left + 10, page.y - 68, 6.4, 'F2', `${(record.template.signature.typedLabel || 'Typed Signature').toUpperCase()}:`, '#5b7488');
-    pdfText(page.ops, pageSize.left + 99, page.y - 68, 7.2, 'F2', record.typedSignature || '-', '#172a3b');
-    pdfText(page.ops, pageSize.left + 10, page.y - 80, 6.4, 'F2', `${(record.template.signature.dateLabel || 'Date').toUpperCase()}:`, '#5b7488');
-    pdfText(page.ops, pageSize.left + 99, page.y - 80, 7.2, 'F2', record.signatureDate || '-', '#172a3b');
-    const sigX = pageSize.left + 316;
-    pdfText(page.ops, sigX, page.y - 18, 7.2, 'F2', 'DRAWN SIGNATURE', '#145c8d');
-    pdfRect(page.ops, sigX, page.y - 76, 200, 47, '#ffffff', '#8eb5ce', .75);
+    wrapText(consent, 5.1, 260).slice(0, 3).forEach((line, index) => pdfText(page.ops, pageSize.left + 8, page.y - 22 - index * 6.3, 5.1, 'F1', line, '#20374a'));
+    pdfText(page.ops, pageSize.left + 8, page.y - 45, 5.1, 'F2', `${(record.template.signature.typedLabel || 'Typed Signature').toUpperCase()}:`, '#5b7488');
+    pdfText(page.ops, pageSize.left + 80, page.y - 45, 5.7, 'F2', record.typedSignature || '-', '#172a3b');
+    pdfText(page.ops, pageSize.left + 226, page.y - 45, 5.1, 'F2', `${(record.template.signature.dateLabel || 'Date').toUpperCase()}:`, '#5b7488');
+    pdfText(page.ops, pageSize.left + 259, page.y - 45, 5.7, 'F2', record.signatureDate || '-', '#172a3b');
+    const sigX = pageSize.left + 355;
+    pdfText(page.ops, sigX, page.y - 13, 5.8, 'F2', 'DRAWN SIGNATURE', '#145c8d');
+    pdfRect(page.ops, sigX, page.y - 47, 190, 29, '#ffffff', '#8eb5ce', .55);
     if (signature) {
       const ratio = signature.width / signature.height;
-      const maxW = 188, maxH = 36;
+      const maxW = 178, maxH = 20;
       let w = maxW, h = w / ratio;
       if (h > maxH) { h = maxH; w = h * ratio; }
-      pdfImage(page.ops, 'Signature', sigX + 6 + (188 - w) / 2, page.y - 70 + (36 - h) / 2, w, h);
+      pdfImage(page.ops, 'Signature', sigX + 6 + (178 - w) / 2, page.y - 43 + (20 - h) / 2, w, h);
     }
-    page.y -= 100;
+    page.y -= 62;
   }
 
   newPage();
@@ -427,8 +421,8 @@ async function createContractPdf(record) {
   drawSignature();
 
   pages.forEach((item, index) => {
-    pdfText(item.ops, 36, 24, 6.5, 'F1', 'Axon Performance - Digital Contract', '#6c8295');
-    pdfText(item.ops, 516, 24, 6.5, 'F1', `Page ${index + 1} of ${pages.length}`, '#6c8295');
+    pdfText(item.ops, 24, 13, 5.2, 'F1', 'Axon Performance - Digital Contract', '#6c8295');
+    pdfText(item.ops, 534, 13, 5.2, 'F1', `Page ${index + 1} of ${pages.length}`, '#6c8295');
   });
 
   const cleanBuilder = new PdfBuilder();
@@ -469,7 +463,7 @@ $('#waiverForm').addEventListener('submit', async event => {
   };
   records.unshift(record); latestRecord = record; persist();
   const slug = (record.fields['Full Legal Name'] || 'contract').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  try { await downloadPdfContract(record); downloadText(contractText(record), `axon-${slug || 'contract'}-${record.id}.txt`); $('#successCopy').textContent = 'Your structured PDF contract and TXT backup have downloaded on this device.'; }
+  try { await downloadPdfContract(record); $('#successCopy').textContent = 'Your condensed PDF contract has downloaded automatically and is stored in Admin Edit.'; renderRecordList(); }
   catch { $('#successCopy').textContent = 'Your contract was saved locally. Use Download PDF Again to retry the PDF export.'; }
   notifyRecord(record).then(result => { record.notificationStatus = result.ok ? 'Sent' : (result.skipped ? 'Not configured' : 'Failed'); persist(); });
   dialog($('#contractDialog'), false); dialog($('#successDialog'), true); form.reset();
@@ -538,8 +532,26 @@ function deleteActiveType() {
   if (Object.keys(waiverTypes).length === 1) { alert('Keep at least one waiver type.'); return; }
   if (confirm(`Delete ${editorTypeName}? Completed contracts are not removed.`)) { delete waiverTypes[editorTypeName]; editorTypeName = Object.keys(waiverTypes)[0]; selectedType = editorTypeName; persist(); renderTypeList(); renderTiles(); renderAdminWorkspace(); }
 }
+function renderRecordList() {
+  const count = $('#recordCount');
+  const list = $('#recordList');
+  if (!count || !list) return;
+  count.textContent = records.length;
+  if (!records.length) {
+    list.innerHTML = '<div class="record-empty">No signed submissions are stored on this iPad yet. Completed contracts will appear here automatically after signing.</div>';
+    return;
+  }
+  list.innerHTML = records.slice(0, 30).map((record, index) => {
+    const signer = cleanPdfText((record.fields && (record.fields['Full Legal Name'] || Object.values(record.fields)[0])) || 'Unsigned record');
+    return `<article class="record-row"><div><b>${esc(signer)}</b><span>${esc(record.type || 'Contract')} · ${esc(record.submittedAt || '')}<br>${esc(record.id || '')}</span></div><button type="button" data-download-record="${index}">PDF</button></article>`;
+  }).join('');
+  $$('[data-download-record]').forEach(button => button.addEventListener('click', () => {
+    const record = records[Number(button.dataset.downloadRecord)];
+    if (record) downloadPdfContract(record);
+  }));
+}
 function setNotifyStatus(message, type = '') { const node = $('#notifyStatus'); node.textContent = message; node.className = `status-copy ${type}`; }
-function refreshAdmin() { editorTypeName = waiverTypes[editorTypeName] ? editorTypeName : Object.keys(waiverTypes)[0]; $('#notifyRecipient').value = recipient; setNotifyStatus(recipient ? `Recipient saved: ${recipient}. Add this address to ALLOWED_NOTIFY_EMAILS in Netlify before live delivery.` : 'Local preview: add a recipient, then follow the Netlify deployment instructions.'); renderTypeList(); renderAdminWorkspace(); }
+function refreshAdmin() { editorTypeName = waiverTypes[editorTypeName] ? editorTypeName : Object.keys(waiverTypes)[0]; $('#notifyRecipient').value = recipient; setNotifyStatus(recipient ? `Recipient saved: ${recipient}. Add this address to ALLOWED_NOTIFY_EMAILS in Netlify before live delivery.` : 'Local preview: add a recipient, then follow the Netlify deployment instructions.'); renderTypeList(); renderAdminWorkspace(); renderRecordList(); }
 
 $('#openAdmin').addEventListener('click', () => { $('#adminPassword').value = ''; $('#adminError').textContent = ''; dialog($('#adminLoginDialog'), true); });
 $('#closeAdminLogin').addEventListener('click', () => dialog($('#adminLoginDialog'), false));
@@ -552,8 +564,7 @@ $('#saveType').addEventListener('click', saveActiveType);
 $$('.editor-tab').forEach(tab => tab.addEventListener('click', () => { activeTab = tab.dataset.tab; renderAdminWorkspace(); }));
 $('#saveRecipient').addEventListener('click', () => { const value = $('#notifyRecipient').value.trim().toLowerCase(); if (!/^\S+@\S+\.\S+$/.test(value)) { setNotifyStatus('Enter a valid email address.', 'error'); return; } recipient = value; persist(); setNotifyStatus(`Recipient saved: ${recipient}. Add it to ALLOWED_NOTIFY_EMAILS before sending live notifications.`, 'success'); });
 $('#sendTest').addEventListener('click', async () => { const value = $('#notifyRecipient').value.trim().toLowerCase(); if (!/^\S+@\S+\.\S+$/.test(value)) { setNotifyStatus('Save a valid recipient first.', 'error'); return; } recipient = value; persist(); setNotifyStatus('Sending test notification…'); const test = { id:'AX-TEST', submittedAt:new Date().toLocaleString(), type:'System Test', badge:'TEST', fields:{'Full Legal Name':'Axon Performance test notification'}, sections:[], eConsent:true, template:{signature:DEFAULT_SIGNATURE} }; const result = await notifyRecord(test); setNotifyStatus(result.ok ? 'Test sent successfully.' : `Test failed: ${result.message || 'Check Netlify variables.'}`, result.ok ? 'success' : 'error'); });
-$('#exportRecordsTxt').addEventListener('click', () => downloadText(records.map(contractText).join('\n\n' + '-'.repeat(88) + '\n\n'), 'axon-performance-contract-records.txt'));
-$('#exportRecordsPdf').addEventListener('click', async () => { if (!records.length) { alert('There are no local contracts to export yet.'); return; } const button = $('#exportRecordsPdf'); button.textContent = 'EXPORTING…'; button.disabled = true; try { for (const record of records.slice(0, 20)) await downloadPdfContract(record); } finally { button.textContent = 'EXPORT ALL AS PDF'; button.disabled = false; } });
+$('#exportRecordsPdf').addEventListener('click', async () => { if (!records.length) { alert('There are no local contracts to export yet.'); return; } const button = $('#exportRecordsPdf'); button.textContent = 'EXPORTING…'; button.disabled = true; try { for (const record of records.slice(0, 20)) await downloadPdfContract(record); } finally { button.textContent = 'DOWNLOAD ALL PDFS'; button.disabled = false; } });
 $('#downloadTemplate').addEventListener('click', () => downloadText(JSON.stringify(waiverTypes, null, 2), 'axon-performance-waiver-template.json'));
 $('#uploadTemplate').addEventListener('change', async event => { const file = event.target.files[0]; if (!file) return; try { const incoming = JSON.parse(await file.text()); if (!incoming || typeof incoming !== 'object') throw new Error('Invalid template'); waiverTypes = Object.fromEntries(Object.entries(incoming).map(([name, cfg]) => [name, normalizeType(cfg)])); selectedType = Object.keys(waiverTypes)[0]; editorTypeName = selectedType; persist(); refreshAdmin(); renderTiles(); setNotifyStatus('Template uploaded and normalized for this device.', 'success'); } catch { setNotifyStatus('Template could not be loaded. Upload a valid Axon template JSON.', 'error'); } event.target.value = ''; });
 $('#openDeploymentInfo').addEventListener('click', () => dialog($('#deploymentDialog'), true));
