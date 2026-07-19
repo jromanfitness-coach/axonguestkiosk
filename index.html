@@ -111,7 +111,14 @@
       <button id="closeAdminLogin" class="icon-close" type="button" aria-label="Close">×</button>
       <p class="eyebrow">STAFF SETTINGS</p><h2 id="adminLoginTitle">ADMIN ACCESS</h2>
       <p>Open the smart local editor to manage every signer-facing label, legal paragraph, initials prompt, signature language, and export heading.</p>
-      <label>Access code<input id="adminPassword" type="password" autocomplete="current-password" placeholder="Enter staff code" /></label>
+      <label>Access code<input id="adminPassword" type="password" inputmode="numeric" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Enter staff code" /></label>
+      <div class="pin-pad" aria-label="Admin numeric keypad">
+        <button type="button" data-pin="1">1</button><button type="button" data-pin="2">2</button><button type="button" data-pin="3">3</button>
+        <button type="button" data-pin="4">4</button><button type="button" data-pin="5">5</button><button type="button" data-pin="6">6</button>
+        <button type="button" data-pin="7">7</button><button type="button" data-pin="8">8</button><button type="button" data-pin="9">9</button>
+        <button type="button" data-pin="clear">CLEAR</button><button type="button" data-pin="0">0</button><button type="button" data-pin="back">⌫</button>
+        <button type="button" data-pin="bang" class="pin-wide">ADD !</button>
+      </div>
       <button id="unlockAdmin" class="primary-action" type="button">UNLOCK ADMIN</button>
       <p id="adminError" class="admin-error" role="alert"></p>
     </section>

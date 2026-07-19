@@ -61,3 +61,6 @@ The static version is ideal for a polished demo and kiosk interface but is not a
 - The signed record is also stored in the browser-local Admin Edit portal under **Stored contracts**.
 - Admin can re-download an individual stored submission PDF or batch download recent local PDFs.
 - Browser-local storage is convenient for the kiosk but should be paired with backend storage before relying on it as long-term legal retention.
+
+## Admin PIN fix
+The Admin Edit login now includes an iPad-safe on-screen keypad. The primary code is `1307!`, and `1307` is also accepted as a fallback for iPads where entering the exclamation mark is inconvenient. Use **ADD !** on the keypad for the full staff code.

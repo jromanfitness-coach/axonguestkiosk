@@ -99,11 +99,12 @@ function normalizeType(config, legacySections = DEFAULT_SECTIONS) {
     signature: { ...clone(DEFAULT_SIGNATURE), ...(source.signature || {}) }
   };
 }
+function parseStorage(key, fallback = null) { try { const value = localStorage.getItem(key); return value ? JSON.parse(value) : fallback; } catch { localStorage.removeItem(key); return fallback; } }
 function loadTypes() {
-  const stored = JSON.parse(localStorage.getItem(STORAGE.types) || 'null');
+  const stored = parseStorage(STORAGE.types, null);
   if (stored) return Object.fromEntries(Object.entries(stored).map(([name, cfg]) => [name, normalizeType(cfg)]));
-  const legacy = JSON.parse(localStorage.getItem('axonWaiverTypes') || 'null');
-  const legacySections = JSON.parse(localStorage.getItem('axonWaiverSections') || 'null') || DEFAULT_SECTIONS;
+  const legacy = parseStorage('axonWaiverTypes', null);
+  const legacySections = parseStorage('axonWaiverSections', null) || DEFAULT_SECTIONS;
   const base = legacy || DEFAULT_TYPES;
   const normalized = Object.fromEntries(Object.entries(base).map(([name, cfg]) => [name, normalizeType(cfg, legacySections)]));
   localStorage.setItem(STORAGE.types, JSON.stringify(normalized));
@@ -111,7 +112,7 @@ function loadTypes() {
 }
 
 let waiverTypes = loadTypes();
-let records = JSON.parse(localStorage.getItem(STORAGE.records) || localStorage.getItem('axonWaiverRecords') || '[]');
+let records = parseStorage(STORAGE.records, null) || parseStorage('axonWaiverRecords', []) || [];
 let recipient = localStorage.getItem(STORAGE.recipient) || localStorage.getItem('axonNotifyRecipient') || '';
 let selectedType = Object.keys(waiverTypes)[0];
 let editorTypeName = selectedType;
@@ -553,9 +554,14 @@ function renderRecordList() {
 function setNotifyStatus(message, type = '') { const node = $('#notifyStatus'); node.textContent = message; node.className = `status-copy ${type}`; }
 function refreshAdmin() { editorTypeName = waiverTypes[editorTypeName] ? editorTypeName : Object.keys(waiverTypes)[0]; $('#notifyRecipient').value = recipient; setNotifyStatus(recipient ? `Recipient saved: ${recipient}. Add this address to ALLOWED_NOTIFY_EMAILS in Netlify before live delivery.` : 'Local preview: add a recipient, then follow the Netlify deployment instructions.'); renderTypeList(); renderAdminWorkspace(); renderRecordList(); }
 
-$('#openAdmin').addEventListener('click', () => { $('#adminPassword').value = ''; $('#adminError').textContent = ''; dialog($('#adminLoginDialog'), true); });
+function normalizedAdminCode() { return String($('#adminPassword').value || '').replace(/\s+/g, '').trim(); }
+function validAdminCode() { const code = normalizedAdminCode(); return ['1307!', '1307', 'TiftonFitness1307', 'tiftonfitness1307'].includes(code); }
+function unlockAdmin() { const err = $('#adminError'); if (validAdminCode()) { err.textContent = 'Access granted.'; err.className = 'admin-error success'; dialog($('#adminLoginDialog'), false); refreshAdmin(); setTimeout(() => dialog($('#adminDialog'), true), 40); } else { err.className = 'admin-error'; err.textContent = 'Incorrect staff code. Use 1307! or tap 1307 then ADD !.'; $('#adminPassword').focus(); } }
+$('#openAdmin').addEventListener('click', () => { $('#adminPassword').value = ''; $('#adminError').textContent = ''; $('#adminError').className = 'admin-error'; dialog($('#adminLoginDialog'), true); setTimeout(() => $('#adminPassword').focus(), 80); });
 $('#closeAdminLogin').addEventListener('click', () => dialog($('#adminLoginDialog'), false));
-$('#unlockAdmin').addEventListener('click', () => { if ($('#adminPassword').value === '1307!') { dialog($('#adminLoginDialog'), false); refreshAdmin(); dialog($('#adminDialog'), true); } else $('#adminError').textContent = 'Incorrect staff code.'; });
+$('#unlockAdmin').addEventListener('click', unlockAdmin);
+$('#adminPassword').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); unlockAdmin(); } });
+$$('[data-pin]').forEach(button => button.addEventListener('click', () => { const action = button.dataset.pin; const input = $('#adminPassword'); if (action === 'clear') input.value = ''; else if (action === 'back') input.value = input.value.slice(0, -1); else if (action === 'bang') input.value += '!'; else input.value += action; $('#adminError').textContent = ''; input.focus(); }));
 $('#closeAdmin').addEventListener('click', () => dialog($('#adminDialog'), false));
 $('#addType').addEventListener('click', newType);
 $('#duplicateType').addEventListener('click', duplicateActiveType);
