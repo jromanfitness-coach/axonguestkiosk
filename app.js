@@ -544,7 +544,7 @@ function renderRecordList() {
   }
   list.innerHTML = records.slice(0, 30).map((record, index) => {
     const signer = cleanPdfText((record.fields && (record.fields['Full Legal Name'] || Object.values(record.fields)[0])) || 'Unsigned record');
-    return `<article class="record-row"><div><b>${esc(signer)}</b><span>${esc(record.type || 'Contract')} · ${esc(record.submittedAt || '')}<br>${esc(record.id || '')}</span></div><button type="button" data-download-record="${index}">PDF</button></article>`;
+    return `<article class="record-row"><div><b>${escapeHtml(signer)}</b><span>${escapeHtml(record.type || 'Contract')} · ${escapeHtml(record.submittedAt || '')}<br>${escapeHtml(record.id || '')}</span></div><button type="button" data-download-record="${index}">PDF</button></article>`;
   }).join('');
   $$('[data-download-record]').forEach(button => button.addEventListener('click', () => {
     const record = records[Number(button.dataset.downloadRecord)];
@@ -555,13 +555,12 @@ function setNotifyStatus(message, type = '') { const node = $('#notifyStatus'); 
 function refreshAdmin() { editorTypeName = waiverTypes[editorTypeName] ? editorTypeName : Object.keys(waiverTypes)[0]; $('#notifyRecipient').value = recipient; setNotifyStatus(recipient ? `Recipient saved: ${recipient}. Add this address to ALLOWED_NOTIFY_EMAILS in Netlify before live delivery.` : 'Local preview: add a recipient, then follow the Netlify deployment instructions.'); renderTypeList(); renderAdminWorkspace(); renderRecordList(); }
 
 function normalizedAdminCode() { return String($('#adminPassword').value || '').replace(/\s+/g, '').trim(); }
-function validAdminCode() { const code = normalizedAdminCode(); return ['1307!', '1307', 'TiftonFitness1307', 'tiftonfitness1307'].includes(code); }
-function unlockAdmin() { const err = $('#adminError'); if (validAdminCode()) { err.textContent = 'Access granted.'; err.className = 'admin-error success'; dialog($('#adminLoginDialog'), false); refreshAdmin(); setTimeout(() => dialog($('#adminDialog'), true), 40); } else { err.className = 'admin-error'; err.textContent = 'Incorrect staff code. Use 1307! or tap 1307 then ADD !.'; $('#adminPassword').focus(); } }
+function validAdminCode() { return normalizedAdminCode() === '1307!'; }
+function unlockAdmin() { const err = $('#adminError'); if (validAdminCode()) { err.textContent = 'Access granted.'; err.className = 'admin-error success'; dialog($('#adminLoginDialog'), false); setTimeout(() => { try { refreshAdmin(); dialog($('#adminDialog'), true); } catch (error) { console.error('Admin open failed:', error); alert('Admin Edit could not open because local kiosk data is corrupted. Clear Safari site data or reload the newest build.'); } }, 80); } else { err.className = 'admin-error'; err.textContent = 'Incorrect staff code. Type 1307! exactly.'; $('#adminPassword').focus(); } }
 $('#openAdmin').addEventListener('click', () => { $('#adminPassword').value = ''; $('#adminError').textContent = ''; $('#adminError').className = 'admin-error'; dialog($('#adminLoginDialog'), true); setTimeout(() => $('#adminPassword').focus(), 80); });
 $('#closeAdminLogin').addEventListener('click', () => dialog($('#adminLoginDialog'), false));
 $('#unlockAdmin').addEventListener('click', unlockAdmin);
 $('#adminPassword').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); unlockAdmin(); } });
-$$('[data-pin]').forEach(button => button.addEventListener('click', () => { const action = button.dataset.pin; const input = $('#adminPassword'); if (action === 'clear') input.value = ''; else if (action === 'back') input.value = input.value.slice(0, -1); else if (action === 'bang') input.value += '!'; else input.value += action; $('#adminError').textContent = ''; input.focus(); }));
 $('#closeAdmin').addEventListener('click', () => dialog($('#adminDialog'), false));
 $('#addType').addEventListener('click', newType);
 $('#duplicateType').addEventListener('click', duplicateActiveType);
